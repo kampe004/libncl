@@ -110,8 +110,8 @@ print("t="+t)
       if(snow_present(t,i,j)) then
          ;num_sno=max(ind(.not.ismissing(var_ext(t,i,j,:)))) ; actual number of snow layers
          num_sno=num(var_ext(t,i,j,:)) ; actual number of snow layers
-         z_ext_cs(t,i,j,num_sno+1)     = z_ext_cs(t,i,j,num_sno) + 0.5 * z_ext(t,i,j,num_sno) ; add half the layer thickness to arrive at bottom
-         var_ext(t,i,j,num_sno+1)   = var_ext(t,i,j,num_sno)
+         z_ext_cs(t,i,j,num_sno)     = z_ext_cs(t,i,j,num_sno-1) + 0.5 * z_ext(t,i,j,num_sno-1) ; add half the layer thickness to arrive at bottom
+         var_ext(t,i,j,num_sno)   = var_ext(t,i,j,num_sno-1)
       end if
    end do
    end do
@@ -127,7 +127,7 @@ print("t="+t)
      print("INFO: zmin+nz*dz = "+(nz*dz+zmin))
    end if
    zdom = fspan(zmin,zmax,nz) 
-   print("zdom = "+zdom)
+;   print("zdom = "+zdom)
 
 print("interpolating")
    ; Do interpolation
@@ -135,8 +135,9 @@ print("interpolating")
 print("t="+t)
    do i=0,nlat-1
    do j=0,nlon-1
-      if (snow_present) then
-         var_tmp := linint1(z_ext_cs(t,i,j,ind(present)), var_ext(t,i,j,ind(present)), False, zdom, 0)
+      if (snow_present(t,i,j)) then
+         present=ind(.not.ismissing(z_ext_cs(t,i,j,:)))
+         var_tmp := linint1(z_ext_cs(t,i,j,present), var_ext(t,i,j,present), False, zdom, 0)
          var_o(t,i,j) = avg(var_tmp)
       end if
    end do
