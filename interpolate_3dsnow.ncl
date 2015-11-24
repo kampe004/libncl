@@ -1,12 +1,12 @@
 
 ;********************************************************
-undef("vint_3dsnow_surface")
+undef("linint_3dsnow_surface")
 ;
 ; Interpolate 3D snow field to target surface (of constant depth)
 ;
-function vint_3dsnow_surface(sno_z, z_surf, var)
+function linint_3dsnow_surface(sno_z, z_surf, var)
 begin
-   routine="vint_3dsnow_surface()"
+   routine="linint_3dsnow_surface()"
    dims     = dimsizes(var)
    nmonth   = dims(0)
    nlevsno  = dims(1)
@@ -58,13 +58,13 @@ begin
 end
 
 ;********************************************************
-undef("vint_3dsnow_layer")
+undef("linint_3dsnow_layer")
 ;
 ; Average of 3D snow field over layer (with a thickness)
 ;
-function vint_3dsnow_layer(sno_z, zmin, zmax, dz, var)
+function linint_3dsnow_layer(sno_z, zmin, zmax, dz, var)
 begin
-   routine="vint_3dsnow_layer"
+   routine="linint_3dsnow_layer"
 
    dims     = dimsizes(var)
    nmonth   = dims(0)
@@ -231,8 +231,10 @@ begin
             end if
          end if
       end do
-      ; mean 
-      var_o(t,i,j) = sum_found/(1.0 * nfound)
+      if (nfound .gt.0) then
+         ; return mean 
+         var_o(t,i,j) = sum_found/(1.0 * nfound)
+      end if
    end do
    end do
    end do
