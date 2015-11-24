@@ -1,7 +1,8 @@
 ;
 ; LvK 19-NOV-2015
 ;
-load "interpolate_3dsnow.ncl"
+SCRIPT_DIR="/glade/u/home/lvank/analysis/libncl/" 
+loadscript(SCRIPT_DIR+"interpolate_3dsnow.ncl")
 
 ;********************************************************
 undef("derive_3dsnow_depth_average")
