@@ -85,10 +85,9 @@ begin
    missmask2 = ismissing(var)
    x=where(missmask1.eq.missmask2,0,1)
    print("disagreement in missing mask : "+num(x)+ " / "+dim_product(dims))
-   
 
-print("reordering")
    ; reorder input arrays and add entries at z=0 and z=BOT
+   print("reordering")
    z_ext    = new( (/ nmonth, nlat, nlon, nlevsno+2 /), typeof(sno_z))
    var_ext  = new( (/ nmonth, nlat, nlon, nlevsno+2 /), typeof(var))
 
@@ -104,7 +103,7 @@ print("reordering")
    snow_present=.not.ismissing(z_ext(:,:,:,0))
    print("adding bottom element")
    do t=0,nmonth-1
-print("t="+t)
+   print("t="+t)
    do i=0,nlat-1
    do j=0,nlon-1
       if(snow_present(t,i,j)) then
@@ -113,8 +112,10 @@ print("t="+t)
          num_sno2=num(.not.ismissing(z_ext_cs(t,i,j,:))) ; actual number of snow layers
          num_sno=min((/num_sno,num_sno2/))
          if (num_sno.gt.0) then
-         z_ext_cs(t,i,j,num_sno)     = z_ext_cs(t,i,j,num_sno-1) + 0.5 * z_ext(t,i,j,num_sno-1) ; add half the layer thickness to arrive at bottom
-         var_ext(t,i,j,num_sno)   = var_ext(t,i,j,num_sno-1)
+            z_ext_cs(t,i,j,num_sno)     = z_ext_cs(t,i,j,num_sno-1) + 0.5 * z_ext(t,i,j,num_sno-1) ; add half the layer thickness to arrive at bottom
+            var_ext(t,i,j,num_sno)   = var_ext(t,i,j,num_sno-1)
+            ;z_ext_cs(t,i,j,num_sno+1)     = z_ext_cs(t,i,j,num_sno) + 0.5 * z_ext(t,i,j,num_sno) ; add half the layer thickness to arrive at bottom
+            ;var_ext(t,i,j,num_sno+1)   = var_ext(t,i,j,num_sno)
          end if
       end if
    end do
@@ -131,16 +132,16 @@ print("t="+t)
      print("INFO: zmin+nz*dz = "+(nz*dz+zmin))
    end if
    zdom = fspan(zmin,zmax,nz) 
-;   print("zdom = "+zdom)
+   ;print("zdom = "+zdom)
 
-print("interpolating")
    ; Do interpolation
+   print("interpolating")
    do t=0,nmonth-1
-print("t="+t)
+   print("t="+t)
    do i=0,nlat-1
    do j=0,nlon-1
       if (snow_present(t,i,j)) then
-         present=ind(.not.ismissing(z_ext_cs(t,i,j,:)))
+         present:=ind(.not.ismissing(z_ext_cs(t,i,j,:)))
          var_tmp := linint1(z_ext_cs(t,i,j,present), var_ext(t,i,j,present), False, zdom, 0)
          var_o(t,i,j) = avg(var_tmp)
       end if
@@ -150,7 +151,6 @@ print("t="+t)
 
    return var_o
 end
-
 
 
 ;********************************************************
