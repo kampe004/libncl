@@ -123,9 +123,9 @@ begin
    end do
 
    ; Numerical quadrature domain
-   nz = round((zmax-zmin)/dz,3)
+   nz = round((zmax-zmin)/dz,3)+1
    eps=1e-6
-   if ( abs((zmin+nz*dz)-zmax) .gt. eps) then
+   if ( abs((zmin+(nz-1)*dz)-zmax) .gt. eps) then
      print("WARNING: "+routine+" provided averaging range not divisible by stepsize dz")
      print("INFO: nz = "+nz)
      print("INFO: zmax = "+zmax)
@@ -145,6 +145,94 @@ begin
          var_tmp := linint1(z_ext_cs(t,i,j,present), var_ext(t,i,j,present), False, zdom, 0)
          var_o(t,i,j) = avg(var_tmp)
       end if
+   end do
+   end do
+   end do
+
+   return var_o
+end
+
+;********************************************************
+undef("sample_3dsnow_layer")
+;
+; Average of 3D snow field over layer (with a thickness)
+;
+function sample_3dsnow_layer(sno_z, zmin, zmax, dz, var)
+begin
+   routine="sample_3dsnow_layer"
+
+   dims     = dimsizes(var)
+   nmonth   = dims(0)
+   nlevsno  = dims(1)
+   nlat     = dims(2)
+   nlon     = dims(3)
+
+   ; setup output variable
+   var_o = new( (/ nmonth, nlat, nlon /), typeof(var) ) 
+   var_o!0 = "time"
+   var_o!1 = "lat"
+   var_o!2 = "lon"
+   var_o&time = var&time
+   var_o&lat  = var&lat
+   var_o&lon  = var&lon
+
+   z_ext  = sno_z( time|:, lat|:, lon|:, lev|:)
+   z_ext  = dim_cumsum(z_ext,0) 
+   var_ext           = var( time|:, lat|:, lon|:, lev|:)
+
+
+   ; Numerical quadrature domain
+   nz = round((zmax-zmin)/dz,3)+1
+   eps=1e-6
+   if ( abs((zmin+(nz-1)*dz)-zmax) .gt. eps) then
+     print("WARNING: "+routine+" provided averaging range not divisible by stepsize dz")
+     print("INFO: nz = "+nz)
+     print("INFO: zmax = "+zmax)
+     print("INFO: zmin+nz*dz = "+(nz*dz+zmin))
+   end if
+   zdom = fspan(zmin,zmax,nz) 
+   ;print("INFO: zdom = "+zdom)
+
+   do t=0,nmonth-1
+   print("t="+t)
+   do i=0,nlat-1
+   do j=0,nlon-1
+      ; locate for each zdom(k) value the snow layer in which it falls (if any)
+      lev       = 0
+      zlev      = z_ext(t,i,j,lev)
+      zlev_m1   = 0.
+      k         = 0 ; index in zdom
+
+      nfound    = 0
+      sum_found = 0.0
+      ; WHILE LOOP INVARIANTS
+      ;   (1)   zdom(k) >= z_ext(lev-1)  -- or 0.0 if lev=0
+      ;   (2)   zdom(k) < z_ext(lev)   
+      ;   (3)   lev < actual number of snow layers <= nlevsno
+      ;   (4)   k < nz
+      do while( .not.ismissing(zlev)  \ ; (3)
+                .and. k .lt. nz ) ; (4)
+       
+         if (zdom(k) .ge. zlev_m1 .and. zdom(k) .lt. zlev  ) then
+            ; zdom(k) falls within layer 'lev'
+            nfound = nfound + 1
+            sum_found = sum_found + var_ext(t,i,j,lev)
+            ; increase k
+            k = k +1
+         else
+            ; zdom(k) falls outside layer 'lev'
+            lev = lev + 1
+            if (lev .lt. nlevsno) then
+               zlev_m1   = zlev
+               zlev      = z_ext(t,i,j,lev)
+            else 
+               ; we may not index z_ext anymore, setting to missing value will break loop
+               zlev = zlev@_FillValue
+            end if
+         end if
+      end do
+      ; mean 
+      var_o(t,i,j) = sum_found/(1.0 * nfound)
    end do
    end do
    end do
