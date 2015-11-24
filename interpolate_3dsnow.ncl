@@ -101,23 +101,21 @@ print("reordering")
    var_ext(:,:,:,0)           = var( time|:, lat|:, lon|:, lev|0)
 
    ; Rightmost index fastest changing (like C)
-;print("extending bottom")
-;   do t=0,nmonth-1
-;   do i=0,nlat-1
-;   do j=0,nlon-1
-;      num_sno=max(ind(.not.ismissing(var_ext(t,i,j,:)))) ; actual number of snow layers
-;      if(.not.ismissing(num_sno)) then
-;         if(num_sno .eq. 0) then
-;           print("ERROR: this should not be possible! ")
-;           exit
-;         else
-;            z_ext_cs(t,i,j,num_sno+1)     = z_ext_cs(t,i,j,num_sno) + 0.5 * z_ext(t,i,j,num_sno) ; add half the layer thickness to arrive at bottom
-;            var_ext(t,i,j,num_sno+1)   = var_ext(t,i,j,num_sno)
-;         end if
-;      end if
-;   end do
-;   end do
-;   end do
+   snow_present=.not.ismissing(z_ext(:,:,:,0))
+   print("adding bottom element")
+   do t=0,nmonth-1
+print("t="+t)
+   do i=0,nlat-1
+   do j=0,nlon-1
+      if(snow_present(t,i,j)) then
+         ;num_sno=max(ind(.not.ismissing(var_ext(t,i,j,:)))) ; actual number of snow layers
+         num_sno=num(var_ext(t,i,j,:)) ; actual number of snow layers
+         z_ext_cs(t,i,j,num_sno+1)     = z_ext_cs(t,i,j,num_sno) + 0.5 * z_ext(t,i,j,num_sno) ; add half the layer thickness to arrive at bottom
+         var_ext(t,i,j,num_sno+1)   = var_ext(t,i,j,num_sno)
+      end if
+   end do
+   end do
+   end do
 
    ; Numerical quadrature domain
    nz = round((zmax-zmin)/dz,3)
@@ -137,8 +135,7 @@ print("interpolating")
 print("t="+t)
    do i=0,nlat-1
    do j=0,nlon-1
-      present=.not.ismissing(z_ext_cs(t,i,j,:))
-      if (any(present)) then
+      if (snow_present) then
          var_tmp := linint1(z_ext_cs(t,i,j,ind(present)), var_ext(t,i,j,ind(present)), False, zdom, 0)
          var_o(t,i,j) = avg(var_tmp)
       end if
