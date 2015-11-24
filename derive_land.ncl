@@ -216,6 +216,21 @@ begin
      return(var)
   end if
 
+  if(var_name.eq."SNO_BW") then
+     var=ptr->SNO_BW
+     return(var)
+  end if
+
+  if(var_name.eq."SNO_MELT") then
+     var=ptr->SNO_MELT_ICE
+     return(var)
+  end if
+
+  if(var_name.eq."SNO_FRZ") then
+     var=ptr->SNO_FRZ_ICE
+     return(var)
+  end if
+
 ; if derived variable is not found, return an array of missing values.
 ; this is check for in the set code. size is irrelevant as long as
 ; the array is greater than 1.
