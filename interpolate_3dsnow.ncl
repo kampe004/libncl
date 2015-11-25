@@ -1,5 +1,35 @@
 
 ;********************************************************
+undef("getTargetDomain")
+;
+; Setup target domain
+;
+function getTargetDomain(zmin,zmax,dz)
+begin
+   ; Numerical quadrature domain
+   nz = round((zmax-zmin)/dz,3)
+   eps=1e-6
+   if ( abs((zmin+nz*dz)-zmax) .gt. eps) then
+     print("WARNING: "+routine+" provided averaging range not divisible by stepsize dz")
+     print("INFO: nz = "+nz)
+     print("INFO: zmax = "+zmax)
+     print("INFO: zmin+nz*dz = "+(nz*dz+zmin))
+   end if
+   if (nz.eq.0) then
+     print("ERROR: nz = 0")
+     exit
+   end if
+   if (nz.eq.1) then
+      zdom = (zmax+zmin)/2.
+   else
+      zdom = fspan(zmin+0.5*dz,zmax-0.5*dz,nz) 
+   end if
+   return zdom
+end
+
+
+
+;********************************************************
 undef("linint_3dsnow_surface")
 ;
 ; Interpolate 3D snow field to target surface (of constant depth)
@@ -57,11 +87,16 @@ begin
    return var_o
 end
 
+
 ;********************************************************
 undef("linint_3dsnow_layer")
 ;
 ; Average of 3D snow field over layer (with a thickness)
+;  zmin : minimum depth
+;  zmax : maximum depth
+;  dz   : sampling interval
 ;
+; This function linearly interpolates the snow layers first, then samples 
 function linint_3dsnow_layer(sno_z, zmin, zmax, dz, var)
 begin
    routine="linint_3dsnow_layer"
@@ -123,16 +158,8 @@ begin
    end do
 
    ; Numerical quadrature domain
-   nz = round((zmax-zmin)/dz,3)+1
-   eps=1e-6
-   if ( abs((zmin+(nz-1)*dz)-zmax) .gt. eps) then
-     print("WARNING: "+routine+" provided averaging range not divisible by stepsize dz")
-     print("INFO: nz = "+nz)
-     print("INFO: zmax = "+zmax)
-     print("INFO: zmin+nz*dz = "+(nz*dz+zmin))
-   end if
-   zdom = fspan(zmin,zmax,nz) 
-   ;print("zdom = "+zdom)
+   zdom = getTargetDomain(zmin,zmax,dz)
+   print("INFO: zdom = "+zdom)
 
    ; Do interpolation
    print("interpolating")
@@ -152,11 +179,16 @@ begin
    return var_o
 end
 
+
 ;********************************************************
 undef("sample_3dsnow_layer")
 ;
 ; Average of 3D snow field over layer (with a thickness)
+;  zmin : minimum depth
+;  zmax : maximum depth
+;  dz   : sampling interval
 ;
+; This function samples from the snow layer array directly
 function sample_3dsnow_layer(sno_z, zmin, zmax, dz, var)
 begin
    routine="sample_3dsnow_layer"
@@ -180,18 +212,10 @@ begin
    z_ext  = dim_cumsum(z_ext,0) 
    var_ext           = var( time|:, lat|:, lon|:, lev|:)
 
-
    ; Numerical quadrature domain
-   nz = round((zmax-zmin)/dz,3)+1
-   eps=1e-6
-   if ( abs((zmin+(nz-1)*dz)-zmax) .gt. eps) then
-     print("WARNING: "+routine+" provided averaging range not divisible by stepsize dz")
-     print("INFO: nz = "+nz)
-     print("INFO: zmax = "+zmax)
-     print("INFO: zmin+nz*dz = "+(nz*dz+zmin))
-   end if
-   zdom = fspan(zmin,zmax,nz) 
-   ;print("INFO: zdom = "+zdom)
+   zdom = getTargetDomain(zmin,zmax,dz)
+   print("INFO: zdom = "+zdom)
+   nz = dimsizes(zdom)
 
    do t=0,nmonth-1
    print("t="+t)
@@ -241,6 +265,7 @@ begin
 
    return var_o
 end
+
 
 
 ;********************************************************
