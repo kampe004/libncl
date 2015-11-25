@@ -1,4 +1,5 @@
 
+
 ;********************************************************
 undef("getTargetDomain")
 ;
@@ -265,6 +266,34 @@ begin
 
    return var_o
 end
+
+;********************************************************
+undef("3dsnow_vert_int_singlepoint")
+;
+; Do fixed point interpolation (one lat/lon) to a set of target depths
+;
+function getTargetDomain(zmin,zmax,dz)
+begin
+   ; Numerical quadrature domain
+   nz = round((zmax-zmin)/dz,3)+1
+   eps=1e-6
+   if ( abs((zmin+(nz-1)*dz)-zmax) .gt. eps) then
+     print("WARNING: "+routine+" provided averaging range not divisible by stepsize dz")
+     print("INFO: nz = "+nz)
+     print("INFO: zmax = "+zmax)
+     print("INFO: zmin+nz*dz = "+(nz*dz+zmin))
+   end if
+   if (nz.eq.0) then
+     print("ERROR: nz = 0")
+     exit
+   end if
+   if (nz.eq.1) then
+      zdom = (zmax+zmin)/2.
+   else
+      zdom = fspan(zmin,zmax,nz) 
+   end if
+end
+
 
 
 
