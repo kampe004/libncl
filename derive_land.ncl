@@ -137,12 +137,27 @@ begin
      return(var)
   end if
 
+  if(var_name.eq."QSNOMELT_ICE")then
+     var=ptr->QSNOMELT_ICE
+     return(var)
+  end if
+
+  if(var_name.eq."QSNOFRZ_ICE")then
+     var=ptr->QSNOFRZ_ICE
+     return(var)
+  end if
+
+  if(var_name.eq."QFLX_SNOW_DRAIN")then
+     var=ptr->QFLX_SNOW_DRAIN
+     return(var)
+  end if
+
   if(var_name.eq."SNOW")then
      var=ptr->SNOW
      return(var)
   end if
 
-  if(var_name.eq."REFREEZE")then
+  if(var_name.eq."REFREEZE" .or. var_name.eq."QSNOFRZ")then
      var=ptr->QSNOFRZ
      return(var)
   end if
