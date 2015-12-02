@@ -53,8 +53,18 @@ begin
      return(var)
   end if
 
+  if(var_name.eq."U10")then
+     var=ptr->U10
+     return(var)
+  end if
+
   if(var_name.eq."TG")then
      var=ptr->TG
+     return(var)
+  end if
+
+  if(var_name.eq."TBOT")then
+     var=ptr->TBOT
      return(var)
   end if
 
@@ -97,6 +107,25 @@ begin
 
   if(var_name.eq."FSM")then
      var=ptr->FSM
+     return(var)
+  end if
+
+  if(var_name.eq."SNOTTOPL")then
+     var=ptr->SNOTTOPL
+     return(var)
+  end if
+
+  if(var_name.eq."SNOBWTOPL")then
+     bw=ptr->SNO_BW
+     dims = getfilevardims(ptr,"SNO_BW")
+;     printVarSummary(bw)
+     var=bw(time|:,lat|:,lon|:,$dims(1)$|0)
+     return(var)
+  end if
+
+
+  if(var_name.eq."FGR")then
+     var=ptr->FGR
      return(var)
   end if
 
@@ -263,6 +292,23 @@ function get_seasonal_mean_data(var_name:string,ptr:file,season:string)
 begin
    var = derive_land(var_name,ptr)
    var := month_to_season(var,season)
+   var!0 = "time"
+   var!1 = "lat"
+   var!2 = "lon"
+   var&lat = ptr->lat
+   var&lon = ptr->lon
+   return var
+end
+
+;********************************************************
+undef("get_annual_mean_data")
+function get_annual_mean_data(var_name:string,ptr:file)
+; From (T, LON, LAT) array with T=0:11 the months, calculate annual mean
+begin
+   var = derive_land(var_name,ptr)
+;   opt=0 ; sum
+   opt=1 ; average
+   var := month_to_annual(var,opt)
    var!0 = "time"
    var!1 = "lat"
    var!2 = "lon"
