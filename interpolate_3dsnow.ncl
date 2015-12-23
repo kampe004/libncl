@@ -1,11 +1,19 @@
+; interpolate_3dsnow.ncl
+;********************************************************
+;  DESCRIPTION
+; 
+;     Library of functions that deal with 3d snow output 
+;     fields from CESM. 
+;
+;********************************************************
 
 
 ;********************************************************
-undef("getTargetDomain")
+undef("__getTargetDomain")
 ;
-; Setup target domain
+; PRIVATE FUNCTION
 ;
-function getTargetDomain(zmin,zmax,dz)
+function __getTargetDomain(zmin,zmax,dz)
 begin
    ; Numerical quadrature domain
    nz = round((zmax-zmin)/dz,3)
@@ -29,15 +37,22 @@ begin
 end
 
 
-
 ;********************************************************
 undef("linint_3dsnow_surface")
 ;
-; Interpolate 3D snow field to target surface (of constant depth)
+; Interpolate to target depth (depth = constant) 
+;  INPUT 
+;     sno_z    : snow layer thickness [time,lev,lat,lon]
+;     z_surf   : target depth [scalar]
+;     var      : field variable [time,lev,lat,lon]
 ;
+; OUTPUT
+;     var_o    : interpolated field variable at target depth [time,lat,lon]
+;                 
 function linint_3dsnow_surface(sno_z, z_surf, var)
 begin
    routine="linint_3dsnow_surface()"
+
    dims     = dimsizes(var)
    nmonth   = dims(0)
    nlevsno  = dims(1)
@@ -90,14 +105,109 @@ end
 
 
 ;********************************************************
+undef("linint_3dsnow_cval")
+;
+; Interpolate to target field value (var = constant) 
+;
+; This function assumes the field is monotonically increasing with depth.
+; Therefore, we look for the first layer k where var[k-1] < cval <= var[k] 
+; at which point we perform a linear interpolation between depth[k-1] and depth[k]
+; 
+;  EXTREME CASES
+;     cval < var[lev=0]    : return 0.
+;     cval > var[lev=n]    : return spval
+;
+;  INPUT 
+;     sno_z    : snow layer thickness [time,lev,lat,lon]
+;     cval     : target field value [scalar]
+;     var      : field variable [time,lev,lat,lon]
+;
+; OUTPUT
+;     z_o      : interpolated depth at target field value [time,lat,lon]
+;
+function linint_3dsnow_cval(sno_z, cval, var)
+begin
+   routine="linint_3dsnow_cval()"
+
+   dims     = dimsizes(var)
+   nmonth   = dims(0)
+   nlevsno  = dims(1)
+   nlat     = dims(2)
+   nlon     = dims(3)
+
+   ; setup output variable
+   z_o = new( (/ nmonth, nlat, nlon /), typeof(var) ) 
+   z_o!0 = "time"
+   z_o!1 = "lat"
+   z_o!2 = "lon"
+   z_o&time = var&time
+   z_o&lat  = var&lat
+   z_o&lon  = var&lon
+
+   ; reorder input arrays and add entries at z=0 and z=BOT
+   z_ext    = new( (/ nmonth, nlat, nlon, nlevsno+2 /), typeof(sno_z))
+   var_ext  = new( (/ nmonth, nlat, nlon, nlevsno+2 /), typeof(var))
+
+   z_ext(:,:,:,1:nlevsno)  = sno_z( time|:, lat|:, lon|:, lev|:)
+   z_ext(:,:,:,0)          = 0.0
+   z_ext_cs                = dim_cumsum(z_ext,0) 
+   z_ext_cs                = z_ext_cs - 0.5*z_ext ; subtract half the layer thickness to arrive at layer midpoint values
+
+   var_ext(:,:,:,1:nlevsno)   = var( time|:, lat|:, lon|:, lev|:)
+   var_ext(:,:,:,0)           = var(:,:,:,0)
+
+   ; Rightmost index fastest changing (like C)
+   do t=0,nmonth-1
+   do i=0,nlat-1
+   do j=0,nlon-1
+      num_sno=max(ind(.not.ismissing(var_ext(t,i,j,:)))) ; actual number of snow layers
+      if(num_sno .eq. 0) then
+        print("ERROR: this should not be possible! ")
+        exit
+      else if (num_sno .gt. 0) then
+         z_ext_cs(t,i,j,num_sno+1)     = z_ext_cs(t,i,j,num_sno) + 0.5 * z_ext(t,i,j,num_sno) ; add half the layer thickness to arrive at bottom
+         var_ext(t,i,j,num_sno+1)   = var_ext(t,i,j,num_sno)
+
+         ; Do interpolation
+         print(var_ext)
+         print(cval)
+         if (cval .le. var_ext(t,i,j,0)) then
+            z_o(t,i,j) = (/ z_ext_cs(t,i,j,0) /)
+         else
+            do k=1,num_sno+1
+               if (cval .le. var_ext(t,i,j,k)) then
+                  z_o(t,i,j) = linint1(var_ext(t,i,j,(k-1):k),z_ext_cs(t,i,j,(k-1):k),False,cval,0)
+                  break
+               end if
+            end do
+         end if
+      end if
+      end if
+   end do
+   end do
+   end do
+
+   return z_o
+end
+
+
+;********************************************************
 undef("linint_3dsnow_layer")
 ;
-; Average of 3D snow field over layer (with a thickness)
-;  zmin : minimum depth
-;  zmax : maximum depth
-;  dz   : sampling interval
+; Average value over a layer (with thickness) 
+; Integration within the layer is performed with a user-specified sampling interval dz. 
+; This function uses linear interpolation in the quadrature
 ;
-; This function linearly interpolates the snow layers first, then samples 
+;  INPUT 
+;     sno_z    : snow layer thickness [time,lev,lat,lon]
+;     zmin     : minimum depth [m]
+;     zmax     : maximum depth [m]
+;     dz       : sampling interval [m]
+;     var      : field variable [time,lev,lat,lon]
+;
+; OUTPUT
+;     var_o    : output field variable [time,lat,lon]
+;
 function linint_3dsnow_layer(sno_z, zmin, zmax, dz, var)
 begin
    routine="linint_3dsnow_layer"
@@ -117,8 +227,8 @@ begin
    var_o&lat  = var&lat
    var_o&lon  = var&lon
 
-   missmask1 = ismissing(sno_z)
-   missmask2 = ismissing(var)
+   missmask1   = ismissing(sno_z)
+   missmask2   = ismissing(var)
    x=where(missmask1.eq.missmask2,0,1)
    print("disagreement in missing mask : "+num(x)+ " / "+dim_product(dims))
 
@@ -159,7 +269,7 @@ begin
    end do
 
    ; Numerical quadrature domain
-   zdom = getTargetDomain(zmin,zmax,dz)
+   zdom = __getTargetDomain(zmin,zmax,dz)
    print("INFO: zdom = "+zdom)
 
    ; Do interpolation
@@ -184,10 +294,19 @@ end
 ;********************************************************
 undef("sample_3dsnow_layer")
 ;
-; Average of 3D snow field over layer (with a thickness)
-;  zmin : minimum depth
-;  zmax : maximum depth
-;  dz   : sampling interval
+; Average value over a layer (with thickness) 
+; Integration within the layer is performed with a user-specified sampling interval dz. 
+; This function samples directly from input array in the quadrature
+;
+;  INPUT 
+;     sno_z    : snow layer thickness [time,lev,lat,lon]
+;     zmin     : minimum depth [m]
+;     zmax     : maximum depth [m]
+;     dz       : sampling interval [m]
+;     var      : field variable [time,lev,lat,lon]
+;
+; OUTPUT
+;     var_o    : output field variable [time,lat,lon]
 ;
 ; This function samples from the snow layer array directly
 function sample_3dsnow_layer(sno_z, zmin, zmax, dz, var)
@@ -214,7 +333,7 @@ begin
    var_ext           = var( time|:, lat|:, lon|:, lev|:)
 
    ; Numerical quadrature domain
-   zdom = getTargetDomain(zmin,zmax,dz)
+   zdom = __getTargetDomain(zmin,zmax,dz)
    print("INFO: zdom = "+zdom)
    nz = dimsizes(zdom)
 
