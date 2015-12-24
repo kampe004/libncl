@@ -78,7 +78,7 @@ begin
    z_ext_cs                = z_ext_cs - 0.5*z_ext ; subtract half the layer thickness to arrive at layer midpoint values
 
    var_ext(:,:,:,1:nlevsno)   = var( time|:, lat|:, lon|:, lev|:)
-   var_ext(:,:,:,0)           = var(:,:,:,0)
+   var_ext(:,:,:,0)           = var( time|:, lat|:, lon|:, lev|0)
 
    ; Rightmost index fastest changing (like C)
    do t=0,nmonth-1
@@ -149,39 +149,44 @@ begin
    var_ext  = new( (/ nmonth, nlat, nlon, nlevsno+2 /), typeof(var))
 
    z_ext(:,:,:,1:nlevsno)  = sno_z( time|:, lat|:, lon|:, lev|:)
+   z_ext(:,:,:,0)          = where(ismissing(sno_z(time|:,lat|:,lon|:,lev|0)),z_ext@_FillValue,0.0)
    z_ext(:,:,:,0)          = 0.0
    z_ext_cs                = dim_cumsum(z_ext,0) 
    z_ext_cs                = z_ext_cs - 0.5*z_ext ; subtract half the layer thickness to arrive at layer midpoint values
 
    var_ext(:,:,:,1:nlevsno)   = var( time|:, lat|:, lon|:, lev|:)
-   var_ext(:,:,:,0)           = var(:,:,:,0)
+   var_ext(:,:,:,0)           = var( time|:, lat|:, lon|:, lev|0)
 
    ; Rightmost index fastest changing (like C)
+   snow_present=.not.ismissing(var_ext(:,:,:,0))
    do t=0,nmonth-1
+   print("t="+t)
    do i=0,nlat-1
    do j=0,nlon-1
-      num_sno=max(ind(.not.ismissing(var_ext(t,i,j,:)))) ; actual number of snow layers
-      if(num_sno .eq. 0) then
-        print("ERROR: this should not be possible! ")
-        exit
-      else if (num_sno .gt. 0) then
-         z_ext_cs(t,i,j,num_sno+1)     = z_ext_cs(t,i,j,num_sno) + 0.5 * z_ext(t,i,j,num_sno) ; add half the layer thickness to arrive at bottom
-         var_ext(t,i,j,num_sno+1)   = var_ext(t,i,j,num_sno)
+      if(snow_present(t,i,j)) then
+         ;num_sno=max(ind(.not.ismissing(var_ext(t,i,j,:)))) ; actual number of snow layers
+         ;num_sno2=max(ind(.not.ismissing(z_ext_cs(t,i,j,:)))) ; actual number of snow layers
+         ;num_sno=min((/num_sno,num_sno2/))
+
+         num_sno=num(.not.ismissing(var_ext(t,i,j,:))) ; actual number of snow layers
+
+         ; extend at bottom
+         z_ext_cs(t,i,j,num_sno)   = z_ext_cs(t,i,j,num_sno-1) + 0.5 * z_ext(t,i,j,num_sno-1) ; add half the layer thickness to arrive at bottom
+         var_ext(t,i,j,num_sno)   = var_ext(t,i,j,num_sno-1)
 
          ; Do interpolation
-         print(var_ext)
-         print(cval)
+;         print("cval="+cval)
+;         print("comparing to="+var_ext(t,i,j,:))
          if (cval .le. var_ext(t,i,j,0)) then
             z_o(t,i,j) = (/ z_ext_cs(t,i,j,0) /)
          else
-            do k=1,num_sno+1
+            do k=1,num_sno
                if (cval .le. var_ext(t,i,j,k)) then
                   z_o(t,i,j) = linint1(var_ext(t,i,j,(k-1):k),z_ext_cs(t,i,j,(k-1):k),False,cval,0)
                   break
                end if
             end do
          end if
-      end if
       end if
    end do
    end do
