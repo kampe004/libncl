@@ -5,16 +5,16 @@ load "/glade/u/home/lvank/analysis/libncl/monthly_to_season.ncl"
 
 
 ;********************************************************
-undef("get_racmo_data_annual")
+undef("get_racmo_data_in_keyed_list_ann")
 ;
 ; Annual RACMO data
 ;  varlist  : list of variables to be selected
 ;  (ys,ye1) : period of interest
 ;
 ;********************************************************
-function get_racmo_data_annual(varlist,ys1,ye1)
+function get_racmo_data_in_keyed_list_ann(varlist,ys1,ye1)
 begin
-   routine = "get_racmo_data_annual()"
+   routine = "get_racmo_data_in_keyed_list_ann()"
    print(""+routine)
 
    ; location of data
@@ -57,7 +57,7 @@ end
 
 
 ;********************************************************
-undef("get_racmo_data_season")
+undef("get_racmo_data_in_keyed_list")
 ;
 ; Monthly RACMO data averaged to season
 ;  varlist  : list of variables to be selected
@@ -65,9 +65,9 @@ undef("get_racmo_data_season")
 ;  seasons  : seasons of interest
 ;
 ;********************************************************
-function get_racmo_data_season(varlist,ys1,ye1,seasons)
+function get_racmo_data_in_keyed_list(varlist,ys1,ye1,seasons)
 begin
-   routine = "get_racmo_data_season()"
+   routine = "get_racmo_data_in_keyed_list()"
    print(""+routine)
 
    ; location of data
@@ -105,7 +105,14 @@ begin
 
       var := ptr->$var_name0$
       var0 := var(jms1:jme1,:,:)
-      var0 := month_to_season_or_annual(var0,season)
+
+      ; calculate seasonal or annual mean
+      if (season  .eq. "ANN") then
+         var0 := month_to_annual(var0,1)
+      else
+         var0 := month_to_season(var0,season)
+      end if
+
       var0 := dim_avg_n(var0(:,:,:), (/ 0 /) )
       copy_VarMeta(var(0,:,:),var0)
       var0 := rm_single_dims(var0) ; removes time dimension, http://www.ncl.ucar.edu/Document/Functions/Contributed/rm_single_dims.shtml
@@ -127,7 +134,6 @@ begin
       ;   var0 = var0 * 365 * 86400
       ;end if
       end if
-
 
       ListPushWithKey(ret_list,var0,var_name+"_avg_"+season)
       end do
