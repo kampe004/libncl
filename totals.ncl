@@ -17,7 +17,7 @@ begin
    massgt = new( (/ nt /), double) 
 
    icesheet = ptr_surfdat->PCT_GLC_ICESHEET
-   area = ptr_surfdat->AREA
+   area     = ptr_surfdat->AREA
    landfrac = ptr_surfdat->LANDFRAC_PFT
    
    nh=new(dimsizes(icesheet),integer)
@@ -50,7 +50,7 @@ begin
 
    ; factor to convert mm/s to Gt/yr
    ; account for area multiplication km^2
-   fac = 86400 * 365 / 1.e12 * 1.e6
+   fac = 86400 * 365 * 1.e-12 * 1.e6
    massgt = massgt * fac
    return(massgt)
 end

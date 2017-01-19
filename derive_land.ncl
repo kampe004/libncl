@@ -11,19 +11,21 @@ begin
   routine = "derive_land"
 
   if(var_name.eq."ALBEDO" .or. var_name .eq. "ASA" .or. var_name .eq. "ALL_SKY_ALBEDO" )then
+    ; albedo between [0, 1]
     fsr  = ptr ->FSR
     fsds = ptr ->FSDS
     var  = fsr                  ; trick to retain meta data
     if (any(fsds .eq. 0)) then  ; set zeros to _FillValue
       fsds = mask(fsds,(fsds .eq. 0),False)
     end if
-    var  = ( fsr/fsds ) * 100.
+    ;var  = ( fsr/fsds ) * 100.
+    var  = ( fsr/fsds ) 
     return(var)
   end if
 
   if(var_name.eq."TOPO_MEC")then
 
-      ptr_mec=addfile("/glade/p/cesmdata/cseg/inputdata/lnd/clm2/surfdata_map/surfdata_1.9x2.5_16pfts_simyr2000_c151014.nc","r")
+     ptr_mec=addfile("/glade/p/cesmdata/cseg/inputdata/lnd/clm2/surfdata_map/surfdata_1.9x2.5_16pfts_simyr2000_c151014.nc","r")
 
      nmec = 10
      topo      = ptr->TOPO
