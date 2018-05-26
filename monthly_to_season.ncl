@@ -3,8 +3,10 @@
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
+
 load "/glade/u/home/lvank/analysis/libncl/list_utils.ncl"
 load "/glade/u/home/lvank/analysis/libncl/derive_land2.ncl"
+load "/glade/u/home/lvank/analysis/libncl/derive_land_season.ncl"
 
 
 
@@ -29,35 +31,17 @@ begin
       do s = 0, dimsizes(seasons)-1,1
       season = seasons(s)
 
-         if (season .ne. "ANN" .and. \
-             season .ne. "DJF" .and. \
-             season .ne. "MAM" .and. \
-             season .ne. "JJA" .and. \
-             season .ne. "SON") then
-             print("ERROR: "+routine+" unknown season: "+season)
-             exit()
-         end if
-
          ; read data, do scaling to standard units
-         var = derive_land2(var_name, ptr_data) 
-
-         ; calculate seasonal or annual mean
-         if (season  .eq. "ANN") then
-            xa := month_to_annual(var,1)
-         else
-            xa := month_to_season(var,season)
-         end if
-
-         ; removes singular time dimension, http://www.ncl.ucar.edu/Document/Functions/Contributed/rm_single_dims.shtml
-         xa := rm_single_dims(xa) 
+         var := derive_land_season(var_name, ptr_data, season)
 
          ; add to List
-         ListPushWithKey(ret_list,xa,var_name+"_avg_"+season)
+         ListPushWithKey(ret_list,var,var_name+"_avg_"+season)
 
       end do ; season
    end do ; varlist
    return ret_list
 end 
+
 
 ;********************************************************
 undef("get_seasonal_mean_data")
@@ -73,6 +57,7 @@ begin
    var&lon = ptr->lon
    return var
 end
+
 
 ;********************************************************
 undef("get_annual_mean_data")

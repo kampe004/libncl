@@ -1,5 +1,8 @@
 ; LvK 19-JAN-2017
+;
 ; extends function derive_land() with units scaling
+; if no match is found, the function derive_land() is called
+;
 
 load "/glade/u/home/lvank/analysis/libncl/derive_land.ncl"
 
@@ -26,6 +29,14 @@ begin
       var = var * 0.01
       return(var)
    end if
+
+   if(var_name.eq."ALBEDO_ICE") then
+      ; albedo between [0, 1]
+      var = derive_land(var_name,ptr)
+      var = var * 0.01
+      return(var)
+   end if
+
 
    if (var_name.eq."TOTAL_MELT") then
       smelt = derive_land2("QSNOMELT",ptr)
@@ -55,8 +66,14 @@ begin
         .or. var_name .eq. "QSOIL" \
         .or. var_name .eq. "QSNWCPICE" \
         .or. var_name .eq. "QSNWCPLIQ" \
+        .or. var_name .eq. "QRUNOFF" \
+        .or. var_name .eq. "QRUNOFF_TO_COUPLER" \
         .or. var_name .eq. "RAIN" \
         .or. var_name .eq. "SNOW" \
+        .or. var_name .eq. "PRECC" \
+        .or. var_name .eq. "PRECL" \
+        .or. var_name .eq. "PRECSC" \
+        .or. var_name .eq. "PRECSL" \
         .or. var_name .eq. "RAIN_REPARTITIONED" \
         .or. var_name .eq. "SNOW_REPARTITIONED" \
         .or. var_name .eq. "QFLX_SNOW_DRAIN") then
@@ -73,10 +90,13 @@ begin
       var = imelt + smelt
       copy_VarMeta(smelt,var)
       return(var)
+
+      ;var = derive_land2("QRUNOFF_TO_COUPLER",ptr)
+      ;return(var)
    end if
 
    if(var_name .eq. "GHF") then
-      ; FGR includes snow melt and ice melt. Subtract those to obtain 'pure' ground heat flux.
+      ; FGR includes snow melt and ice melt. Subtract those to obtain 'pure' ground heat flux GHF.
       ;  vars1['GHF'] = vars1['FGR'] + np.minimum(vars1['QICE'],0.0)*hfus - vars1['FSM']
       hfus = 3.337e5 ; heat of fusion  [J/kg]
       icemelt  = ptr->QICE_MELT
@@ -85,6 +105,18 @@ begin
       grf = fgr - hfus*icemelt - fsm
       copy_VarMeta(fgr,grf)
       return(grf)
+   end if
+
+   if(var_name .eq. "MHEAT") then
+      ; MHEAT is total melt heat
+      ; var_dict['MHEAT']   = var_dict['FSM_ICE'] + var_dict['QICE_MELT']*hfus
+      hfus = 3.337e5 ; heat of fusion  [J/kg]
+      icemelt  = ptr->QICE_MELT
+      fsm      = ptr->FSM
+      mheat = fsm
+      mheat = fsm + hfus*icemelt
+      copy_VarMeta(fsm,mheat)
+      return(mheat)
    end if
 
    if(var_name .eq. "GHF_ICE") then
@@ -106,8 +138,19 @@ begin
       return(var0)
    end if
 
+   if(var_name .eq. "CAM_PREC") then
+      precc   := ptr->PRECC
+      precl   := ptr->PRECL
+
+      cam_prec = precc + precl
+      copy_VarMeta(precc,cam_prec)
+      ; convert from m/s to mm/yr
+      cam_prec = cam_prec * 3600 * 24. * 365 * 1000
+      return(cam_prec)
+   end if
+
+
    if(var_name .eq. "CAM_RAIN") then
-      ; NOTE: NOT TESTED YET
       precc   := ptr->PRECC
       precl   := ptr->PRECL
       precsc   := ptr->PRECSC
@@ -121,7 +164,6 @@ begin
    end if
 
    if(var_name .eq. "CAM_SNOW") then
-      ; NOTE: NOT TESTED YET
       precsc   := ptr->PRECSC
       precsl   := ptr->PRECSL
 

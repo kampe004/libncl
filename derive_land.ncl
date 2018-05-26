@@ -28,6 +28,19 @@ begin
       return(var)
    end if
 
+   if(var_name.eq."ALBEDO_ICE" )then
+      ; albedo as percentage, for backwards compatibility
+      fsr  = ptr ->FSR_ICE
+      fsds = ptr ->FSDS
+      var  = fsr                  ; trick to retain meta data
+      if (any(fsds .eq. 0)) then  ; set zeros to _FillValue
+         fsds = mask(fsds,(fsds .eq. 0),False)
+      end if
+      var  = ( fsr/fsds ) * 100.
+      return(var)
+   end if
+
+
    if(var_name.eq."TOPO_MEC")then
       print("WARNING: do not trust TOPO_MEC from "+routine+" as it is hardcoded, not version dependent!")
 
@@ -184,6 +197,53 @@ begin
       copy_VarMeta(somevar,tsoi0)
       return(tsoi0)
    end if
+
+   if(var_name .eq. "SWTRANS") then 
+      ; SW transmissivity = SWd / SWd,toa
+      print("WARNING: using variable FSDS, this should be from CAM not CLM")
+      swn_toa   := ptr->FSNTOA
+      swu_toa   := ptr->FSUTOA
+      swd_toa = swn_toa + swu_toa
+      if (any(swd_toa .eq. 0)) then  ; set zeros to _FillValue
+         swd_toa = mask(swd_toa,(swd_toa .eq. 0),False)
+      end if
+      swd_sfc  := ptr->FSDS
+      trans = swd_sfc / swd_toa
+      copy_VarMeta(swd_sfc,trans)
+      return(trans)
+   end if
+
+   if(var_name .eq. "NETCF") then 
+      ; net cloud forcing
+      swcf   := ptr->SWCF
+      lwcf   := ptr->LWCF
+      netcf = swcf + lwcf
+      copy_VarMeta(swcf,netcf)
+      return(netcf)
+   end if
+
+   if(var_name .eq. "NETRAD") then 
+      ; net radiation
+      swa   := ptr->FSA
+      lwa   := ptr->FIRA
+      netrad = swa - lwa ; FIRA negative towards the surface
+      copy_VarMeta(swa,netrad)
+      return(netrad)
+   end if
+
+   if(var_name .eq. "WIND_DC") then 
+      ; directional constancy
+      ; dc = sqrt(u**2 + v**2) / V
+      uu   := ptr->UU
+      vv   := ptr->VV
+      u    := ptr->U
+      v    := ptr->V
+      dc = sqrt(u*u + v*v) / sqrt(uu + vv)
+      copy_VarMeta(u,dc)
+      return(dc)
+   end if
+
+
 
    ; no match with any special case
    var = ptr->$var_name$
