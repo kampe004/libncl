@@ -67,6 +67,7 @@ begin
         .or. var_name .eq. "QSNWCPICE" \
         .or. var_name .eq. "QSNWCPLIQ" \
         .or. var_name .eq. "QRUNOFF" \
+        .or. var_name .eq. "QRUNOFF_ICE" \
         .or. var_name .eq. "QRUNOFF_TO_COUPLER" \
         .or. var_name .eq. "RAIN" \
         .or. var_name .eq. "SNOW" \
@@ -76,6 +77,9 @@ begin
         .or. var_name .eq. "PRECSL" \
         .or. var_name .eq. "RAIN_REPARTITIONED" \
         .or. var_name .eq. "SNOW_REPARTITIONED" \
+        .or. var_name .eq. "QOVER" \
+        .or. var_name .eq. "QDRAI" \
+        .or. var_name .eq. "QRGWL" \
         .or. var_name .eq. "QFLX_SNOW_DRAIN") then
      var   = ptr->$var_name$
      ; unit scaling: mm/s to mm/year
@@ -132,11 +136,35 @@ begin
    end if
 
    if(var_name .eq. "H2OSNO") then
-      ; convert from mm to m
       var0   := ptr->$var_name$ 
-      var0 = var0 * 0.001
+      ;var0 = var0 * 0.001 ; convert from mm to m
       return(var0)
    end if
+
+   if (var_name .eq. "PCT_LANDUNIT_GLC") then
+      ; in CESM2, selects only GLC_MEC landunit type       
+      ; as ltype_landice_multiple_elevation_classes = 4 ;
+      var0   := ptr->PCT_LANDUNIT
+      dims = dimsizes(var0)
+      rank = dimsizes(dims)
+      if (rank .eq. 3) then
+         ; unstructured grid, e.g. Spectral Element
+         ; float PCT_LANDUNIT(time, ltype, lndgrid) ;
+         var0 := var0(:,3,:)
+      else if (rank .eq. 4) then
+         ; lat / lon grid
+         ; float PCT_LANDUNIT(time, ltype, lat, lon) ;
+         var0 := var0(:,3,:,:)
+      else 
+         print("ERROR: "+routine+" unknown rank for PCT_LANDUNIT : "+rank)
+         exit
+      end if
+      end if
+
+      var0 := rm_single_dims(var0) 
+      return(var0)
+   end if
+
 
    if(var_name .eq. "CAM_PREC") then
       precc   := ptr->PRECC
@@ -188,7 +216,23 @@ begin
       return(var)
    end if
 
+   if (var_name .eq. "CRE") then
+      ; cloud radiative effect
+      ; UNTESTED
+      radall   := ptr->FLNS
+      radall    = -radall + ptr->FSNS ; flip LW sign
+      radclear := ptr->FLNSC
+      radclear  = -radclear + ptr->FSNSC
+      var = radall
+      var = radall - radclear
+      return(var)
+   end if
+
+
+
    ; no match
+   print("WARNING: derive_land2 was called with variable "+var_name+" but found no match")
+   print("WARNING: no scaling has been applied")
    var = derive_land(var_name,ptr)
    return var
 end
