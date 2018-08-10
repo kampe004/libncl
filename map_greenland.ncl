@@ -1,3 +1,5 @@
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/shea_util.ncl"
+
 ; 
 ; Utilities for map plotting over greenland 
 ; The functions and procedures are designed to produce a SINGLE figure
@@ -209,6 +211,7 @@ local res1, contour
 begin
    res1 := res
    res1@lbLabelBarOn           = False
+   res1@cnInfoLabelOn          = False   ; disable "Contour from..." message
  
    contour = gsn_csm_contour(wks,field,res1)
    overlay(plot_id, contour)
@@ -251,6 +254,7 @@ begin
 ;   res1@lbTitleString           = lbres@lbTitleString
    res1@lbTitleFontHeightF       = 0.025
    res1@lbTitleFont              = 21
+   res1@cnInfoLabelOn          = False   ; disable "Contour from..." message
 
    contour = gsn_csm_contour(wks,field,res1)
    overlay(plot_id, contour)
@@ -348,6 +352,38 @@ begin
    contour = gsn_csm_contour(wks,field,res1)
    overlay(plot_id, contour)
 end
+
+
+
+;********************************************************
+undef("overlayPanelString")
+; 
+; Overlay text (a) etc. on plot when panelling
+; Used as replacement for  gsnPanelFigureStrings 
+;
+;********************************************************
+procedure overlayPanelString(wks, plot_id, text)
+local anres, txres,dum1,txt_obj
+begin
+
+   txres                       = True
+   txres@txPerimOn             = True
+   txres@txBackgroundFillColor = "White"
+   txres@txFontHeightF         = 0.015
+   txt_obj = gsn_create_text(wks, text, txres)
+
+   ; By default, the graphical object is attached to the center of the plot. To change this, use a 
+   ; combination of the resources amJust, amParallelPosF, and amOrthogonalPosF. amJust allows you to 
+   ; specify which corner of the graphical object you want to use as the positioning point. The default ;
+   ; is "CenterCenter" (the center of the object). Other possible values are "TopLeft", "TopCenter", 
+   ; "TopRight", "CenterLeft", "CenterRight", "BottomLeft", "BottomCenter", and "BottomRight". 
+   anres = True
+   anres@amJust = "TopLeft"
+   anres@amParallelPosF   = -0.5    ; This is the left edge of the plot.
+   anres@amOrthogonalPosF = -0.5    ; This is the top edge of the plot.
+   dum1 = gsn_add_annotation(plot_id, txt_obj, anres)
+end
+
  
  
 ;********************************************************
@@ -649,3 +685,5 @@ begin
  	;maximize_output(wks,True)
  
 end
+
+
