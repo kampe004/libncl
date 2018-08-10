@@ -18,7 +18,8 @@ begin
    print(""+routine)
 
    ; location of data
-   racmo_data = "/glade/p/work/lvank/racmo/racmo23_GRN_yearly/"
+   ;racmo_data = "/glade/p/work/lvank/racmo/racmo23_GRN_yearly/"
+   racmo_data = "/glade/p_old/work/lvank/racmo/racmo23_GRN_yearly/" ; July 2018
 
    ; start and end year of data
    ysr      = 1958
@@ -80,7 +81,8 @@ begin
       yer      = 2013
    else if (version .eq. "2.3p2") then
       ; location of data
-      racmo_data = "/glade/p/work/lvank/racmo/racmo23p2_GRN_monthly/"
+      ;racmo_data = "/glade/p/work/lvank/racmo/racmo23p2_GRN_monthly/"
+      racmo_data = "/glade/work/lvank/racmo/racmo23p2_GRN_monthly/" ; new location July 2018
       ; start and end year of data
       ysr      = 1961
       yer      = 1990
