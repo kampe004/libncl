@@ -25,11 +25,19 @@ begin
 
    ; calculate seasonal or annual mean
    if (season  .eq. "ANN") then
-      xa := month_to_annual(var,1)
+      if (var@units .eq. "mm") then
+         xa := month_to_annual(var,0) ; opt=0, annual sum
+      else
+         xa := month_to_annual(var,1) ; opt=1, annual mean 
+      end if
    else if (season .eq. "MONTHLY") then
       xa := var
    else
       xa := month_to_season(var,season)
+      if (var@units .eq. "mm") then
+         ; month_to_season calculates mean, we want seasonal sum
+         xa = xa * 3
+      end if
    end if
    end if
 

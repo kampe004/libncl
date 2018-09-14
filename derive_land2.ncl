@@ -6,6 +6,53 @@
 
 load "/glade/u/home/lvank/analysis/libncl/derive_land.ncl"
 
+
+
+
+;********************************************************
+undef("scale_second_to_month")
+; 
+;  Scale units from 1/s to 1/month
+;
+;********************************************************
+procedure scale_second_to_month(var) 
+local dpm, i, dims, ndims
+begin
+   dpm = (/ 31 ,28 ,31 ,30 ,31 ,30 ,31 ,31 ,30 ,31 ,30 ,31 /) ; days per month, no leap
+   dims = dimsizes(var)
+   ndims = dimsizes(dims)
+
+   if (dims(0) .ne. 12) then ; assume first dimension time
+      print("ERROR: first dimension not equal to 12, will not apply second to month scaling")
+      return
+   end if
+   
+   if (ndims .eq. 2) then
+      do i = 0,11,1
+         var(i,:) = var(i,:) * dpm(i)
+         print(""+i)
+      end do
+   else if (ndims .eq. 3) then
+      do i = 0,11,1
+         var(i,:,:) = var(i,:,:) * dpm(i)
+         print(""+i)
+      end do
+   else if (ndims .eq. 4) then
+      do i = 0,11,1
+         var(i,:,:) = var(i,:,:) * dpm(i)
+         print(""+i)
+      end do
+   else 
+      print("ERROR: ndims = "+ndims+" not implemented, will abort")
+      exit()
+   end if
+   end if
+   end if
+   var = var * 86400. ; seconds in day
+   print("INFO: converted time units 1/s to 1/month")
+   return
+end 
+
 ;********************************************************
 undef("derive_land2")
 ;
@@ -82,8 +129,11 @@ begin
         .or. var_name .eq. "QRGWL" \
         .or. var_name .eq. "QFLX_SNOW_DRAIN") then
      var   = ptr->$var_name$
-     ; unit scaling: mm/s to mm/year
-     var = var * (86400. * 365)
+
+     ; unit scaling: mm/s to mm/month
+     scale_second_to_month(var) 
+     var@units = "mm" ; this is used in derive_land_season.ncl !!
+
      return(var)
    end if
 
@@ -172,8 +222,11 @@ begin
 
       cam_prec = precc + precl
       copy_VarMeta(precc,cam_prec)
-      ; convert from m/s to mm/yr
-      cam_prec = cam_prec * 3600 * 24. * 365 * 1000
+      ; convert from m to mm
+      cam_prec = cam_prec * 1000.
+     ; unit scaling: mm/s to mm/month
+      scale_second_to_month(var) 
+      print("INFO: converted units "+var_name+" m/s to mm/month")
       return(cam_prec)
    end if
 
@@ -187,7 +240,10 @@ begin
       cam_rain = precc + precl - precsc - precsl
       copy_VarMeta(precc,cam_rain)
       ; convert from m/s to mm/yr
-      cam_rain = cam_rain * 3600 * 24. * 365 * 1000
+      cam_rain = cam_rain * 1000. 
+     ; unit scaling: mm/s to mm/month
+      scale_second_to_month(var) 
+      print("INFO: converted units "+var_name+" m/s to mm/month")
       return(cam_rain)
    end if
 
@@ -198,7 +254,10 @@ begin
       cam_snow = precsc + precsl
       copy_VarMeta(precsc,cam_snow)
       ; convert from m/s to mm/yr
-      cam_snow = cam_snow * 3600 * 24. * 365 * 1000
+      cam_snow = cam_snow * 1000. 
+     ; unit scaling: mm/s to mm/month
+      scale_second_to_month(var) 
+      print("INFO: converted units "+var_name+" m/s to mm/month")
       return(cam_snow)
    end if
 
@@ -228,6 +287,12 @@ begin
       return(var)
    end if
 
+   if (var_name .eq. "PS" .or. var_name .eq. "PSL") then
+      ; surface pressure
+      var := ptr->PS
+      var = var / 100. ; convert Pa to hPa
+      return(var)
+   end if
 
 
    ; no match
